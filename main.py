@@ -10,6 +10,9 @@ from database import db, serialize_dict, users_collection
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from openai import OpenAI
+from openai.types.chat import ChatCompletionMessageParam
+import random
 
 # Secret key and algorithm for JWT
 SECRET_KEY = "your_secret_key"
@@ -17,6 +20,13 @@ ALGORITHM = "HS256"
 
 # Instantiate FastAPI app
 app = FastAPI()
+
+# openai.api_key = "sk-h6TtCNS3fGaHLw4H5FEZ7t3DlZmNgZcDUvgfcraHliT3BlbkFJcDgBvFZqZ2lazKqRDo36p_UgbnGk_59IyOTFeOOWkA"
+
+client = OpenAI(
+    api_key="sk-h6TtCNS3fGaHLw4H5FEZ7t3DlZmNgZcDUvgfcraHliT3BlbkFJcDgBvFZqZ2lazKqRDo36p_UgbnGk_59IyOTFeOOWkA"
+)
+
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -46,69 +56,73 @@ async def read_login(request: Request):
 
 @app.get("/users/me", response_class=HTMLResponse)
 async def prompt_page(request: Request):
-    return templates.TemplateResponse("response.html", {"request": request})
+    return templates.TemplateResponse("response1.html", {"request": request})
 
 
-# # Registration endpoint
-# @app.post("/register/")
-# def register(user: UserCreate):
-#     # Check if the user is already in the database
-#     user_in_db = users_collection.find_one({"email": user.email})
-#     if user_in_db:
-#         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
-    
-#     # Hash the password before storing it
-#     hashed_password = hash_password(user.password)
-    
-#     # Create a dictionary to insert into the database
-#     user_dict = {"email": user.email, "hashed_password": hashed_password}
-    
-#     # Insert the new user into the users collection
-#     users_collection.insert_one(user_dict)
-    
-#     return {"msg": "User registered successfully"}
 
-# Login endpoint
-# @app.post("/login/")
-# def login(user: UserCreate):
-#     # Fetch the user from the database by email
-#     user_in_db = users_collection.find_one({"email": user.email})
-    
-#     # If the user doesn't exist or the password is incorrect, raise an exception
-#     if not user_in_db or not verify_password(user.password, user_in_db['hashed_password']):
-#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    
-#     # If credentials are valid, create an access token
-#     access_token = create_access_token(data={"sub": user.email})
-    
-#     return {"access_token": access_token, "token_type": "bearer"}
+# Predefined list of LeetCode-style questions and sample verbal approaches
+questions = [
+    "FIRST BAD VERSION: Implement a function to find the first bad version in a series of versions.",
+    "TWO SUM: Given an array of integers, return indices of the two numbers that add up to a specific target.",
+    "MERGE INTERVALS: Given a collection of intervals, merge all overlapping intervals.",
+    "LONGEST PALINDROMIC SUBSTRING: Find the longest palindromic substring in a given string.",
+    "FIND MEDIAN FROM DATA STREAM: Continuously add numbers and return the median after each addition."
+]
 
-# Get current user endpoint
-# @app.get("/users/me/")
-# def get_current_user(token: str = Depends(oauth2_scheme)):
-#     credentials_exception = HTTPException(
-#         status_code=status.HTTP_401_UNAUTHORIZED,
-#         detail="Could not validate credentials",
-#         headers={"WWW-Authenticate": "Bearer"},
-#     )
-    
-#     try:
-#         # Decode the JWT token
-#         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        
-#         # Extract the user's email from the token payload
-#         email: str = payload.get("sub", None)
-        
-#         if email is None:
-#             raise credentials_exception
-#     except JWTError:
-#         raise credentials_exception
-    
-#     # Fetch the user from the database
-#     user = users_collection.find_one({"email": email})
-    
-#     if user is None:
-#         raise credentials_exception
-    
-#     # Return the user data in a serializable format
-#     return serialize_dict(user)
+
+@app.post("/generate_feedback")
+async def generate_feedback(request: Request):
+    try:
+        # Parse the incoming JSON data from the request body
+        data = await request.json()
+        question = data.get("question", random.choice(questions))  # Use provided question or a random one
+        verbal_approach = data.get("verbal_approach")
+
+        if not verbal_approach:
+            return {"error": "Verbal approach is required"}
+
+        # Prepare messages for the OpenAI API using the correct format
+        messages: list[ChatCompletionMessageParam] = [
+            {"role": "system", "content": "You are an AI interviewer conducting a coding interview."},
+            {"role": "system", "content": f"The following LeetCode question was displayed to the candidate: {question}"},
+            {
+                "role": "system",
+                "content": """
+                The candidate has explained their approach to solving the problem.
+
+                Please assess the candidate's verbal approach based on the following:
+
+                1) Is their approach correct? If not, provide gentle hints to guide them in the right direction.
+                2) What data structures are they using, and suggest how they could have solved that question in a better way.
+                3) In the end, give unbiased and specific feedback on improving their approach if necessary.
+
+                Do not say things in bullet points or mention the criteria for assessment (e.g., '**Correctness**:...'). Just share the feedback upfront directly.
+                """
+            },
+            {"role": "user", "content": f"Candidate's Verbal Approach: {verbal_approach}"}
+        ]
+
+        # Call OpenAI's chat completion API using the client
+        response = client.chat.completions.create(
+            model="gpt-4",  # Use gpt-4 or gpt-3.5-turbo
+            messages=messages,
+            max_tokens=400
+        )
+
+        # Extract feedback from the OpenAI response
+        if response.choices and response.choices[0].message:
+            feedback = response.choices[0].message.content
+            if feedback:
+                feedback = feedback.strip()  # Only strip if content exists
+            else:
+                feedback = "No feedback returned from OpenAI."
+        else:
+            feedback = "No valid response received from OpenAI."
+        return {
+            "question": question,
+            "verbal_approach": verbal_approach,
+            "feedback": feedback
+        }
+
+    except Exception as e:
+        return {"error": str(e)}

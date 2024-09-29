@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interview Feedback</title>
+    <style>
+        .user-prompt, .system-response {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user-prompt {
+            background-color: #e0f7fa;
+        }
+        .system-response {
+            background-color: #ffe0b2;
+        }
+    </style>
+</head>
+<body>
+    <h2>AI Interview Feedback</h2>
+    <div id="response-box" style="border: 1px solid #ccc; height: 300px; overflow-y: scroll; padding: 10px;"></div>
+
+    <button id="start-question">Start Question</button>
+    <button id="start-speech" disabled>Start Speech Recognition</button>
+    <p id="status" style="color: green;"></p>
+
+    <input type="hidden" id="speech-result">
+
+    <script>
+        let currentQuestion = `
+        FIRST BAD VERSION
+
+        You are a product manager and currently leading a team to develop a new product. Unfortunately, the latest version of your product fails the quality check. Since each version is developed based on the previous version, all the versions after a bad version are also bad.
+
+        Suppose you have n versions [1, 2, ..., n] and you want to find out the first bad one, which causes all the following ones to be bad.
+
+        You are given an API bool isBadVersion(version) which returns whether version is bad. Implement a function to find the first bad version. You should minimize the number of calls to the API.
+
+        Example 1:
+
+        Input: n = 5, bad = 4
+        Output: 4
+        Explanation:
+        call isBadVersion(3) -> false
+        call isBadVersion(5) -> true
+        call isBadVersion(4) -> true
+        Then 4 is the first bad version.
+
+        Example 2:
+
+        Input: n = 1, bad = 1
+        Output: 1
+
+        Constraints:
+        1 <= bad <= n <= 2^31 - 1
+        `;
+        const responseBox = document.getElementById("response-box");
+        const statusElement = document.getElementById("status");
+
+        // Utility function to append messages to the response box
+        function appendToResponseBox(text, className) {
+            const div = document.createElement("div");
+            div.classList.add(className);
+            div.textContent = text;
+            responseBox.appendChild(div);
+            responseBox.scrollTop = responseBox.scrollHeight;
+        }
+
+        // Handle starting the question
+        document.getElementById("start-question").addEventListener("click", function() {
+            // Display the question in the response box
+            appendToResponseBox(currentQuestion, 'user-prompt');
+
+            // Enable speech button after the question is displayed
+            document.getElementById("start-speech").disabled = false;
+        });
+
+        // Handle speech recognition
+        document.getElementById("start-speech").addEventListener("click", function() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = "en-US";
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.start();
+            statusElement.textContent = "Listening...";
+            document.getElementById("start-speech").disabled = true;
+
+            recognition.onresult = function(event) {
+                const speechResult = event.results[0][0].transcript;
+                document.getElementById("speech-result").value = speechResult;
+
+                // Display the speech result in the response box
+                appendToResponseBox("Your Response: " + speechResult, 'system-response');
+
+                // Send the answer (verbal approach) to the backend for feedback
+                fetch("/generate_feedback", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ verbal_approach: speechResult })  // No need to send question
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Display the feedback in the response box
+                    appendToResponseBox("Feedback: " + data.feedback, 'system-response');
+                    statusElement.textContent = "";
+                })
+                .catch(error => {
+                    alert("Error fetching feedback: " + error);
+                    statusElement.textContent = "";
+                })
+                .finally(() => {
+                    document.getElementById("start-speech").disabled = false;
+                });
+            };
+
+            recognition.onerror = function(event) {
+                alert("Error occurred in recognition: " + event.error);
+                document.getElementById("start-speech").disabled = false;
+                statusElement.textContent = "";
+            };
+
+            recognition.onspeechend = function() {
+                recognition.stop();
+                statusElement.textContent = "Processing response...";
+            };
+        });
+    </script>
+</body>
+</html>

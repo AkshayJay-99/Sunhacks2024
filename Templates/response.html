@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prompt-Response System</title>
+    <title>LeetCode Question Feedback System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -34,55 +34,115 @@
     </style>
 </head>
 <body>
-
     <div class="container">
-        <h2 class="text-center">Interview-Feedback-Workspace</h2>
-
-        <!-- Prompt input form -->
-        <form id="prompt-form" class="mt-3">
-            <div class="mb-3">
-                <label for="user-prompt" class="form-label">Enter your prompt:</label>
-                <input type="text" class="form-control" id="user-prompt" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Send</button>
-        </form>
+        <h2 class="text-center">LeetCode Question Feedback System</h2>
+        
+        <div class="mt-4">
+            <button id="start-question" class="btn btn-primary">Start Question</button>
+            <button id="start-speech" class="btn btn-secondary" disabled>Answer with Speech</button>
+        </div>
 
         <!-- Response display box -->
         <div id="response-box">
-            <!-- Conversations will appear here -->
+            <!-- Questions and answers will appear here -->
         </div>
+
+        <!-- Hidden input to display converted speech text -->
+        <input type="hidden" id="speech-result">
     </div>
 
     <script>
-        document.getElementById("prompt-form").addEventListener("submit", function(e) {
-            e.preventDefault();
+        let currentQuestion = '';
 
-            // Get the user's input
-            const userPrompt = document.getElementById("user-prompt").value;
-
-            // Add user's prompt to the response box
+        // Handle starting the question
+        document.getElementById("start-question").addEventListener("click", function() {
+            // Directly set the "First Bad Version" question
+            currentQuestion = `
+            FIRST BAD VERSION
+        
+            You are a product manager and currently leading a team to develop a new product. Unfortunately, the latest version of your product fails the quality check. Since each version is developed based on the previous version, all the versions after a bad version are also bad.
+        
+            Suppose you have n versions [1, 2, ..., n] and you want to find out the first bad one, which causes all the following ones to be bad.
+        
+            You are given an API bool isBadVersion(version) which returns whether version is bad. Implement a function to find the first bad version. You should minimize the number of calls to the API.
+        
+            Example 1:
+        
+            Input: n = 5, bad = 4
+            Output: 4
+            Explanation:
+            call isBadVersion(3) -> false
+            call isBadVersion(5) -> true
+            call isBadVersion(4) -> true
+            Then 4 is the first bad version.
+        
+            Example 2:
+        
+            Input: n = 1, bad = 1
+            Output: 1
+        
+            Constraints:
+            1 <= bad <= n <= 2^31 - 1
+            `;
+        
+            // Display the question in the response box
             const responseBox = document.getElementById("response-box");
-            const userPromptDiv = document.createElement("div");
-            userPromptDiv.classList.add("user-prompt");
-            userPromptDiv.textContent = "You: " + userPrompt;
-            responseBox.appendChild(userPromptDiv);
+            const questionDiv = document.createElement("div");
+            questionDiv.classList.add("user-prompt");
+            questionDiv.textContent = currentQuestion;
+            responseBox.appendChild(questionDiv);
+        
+            // Enable speech button after the question is displayed
+            document.getElementById("start-speech").disabled = false;
+        });
 
-            // Clear the input field
-            document.getElementById("user-prompt").value = '';
+        // Handle speech recognition
+        document.getElementById("start-speech").addEventListener("click", function() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = "en-US";
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
 
-            // Generate a system response (for demo purposes, it's a static response)
-            setTimeout(() => {
-                const systemResponseDiv = document.createElement("div");
-                systemResponseDiv.classList.add("system-response");
-                systemResponseDiv.textContent = "System: This is a response to your prompt: '" + userPrompt + "'";
-                responseBox.appendChild(systemResponseDiv);
+            recognition.start();
 
-                // Scroll to the bottom of the response box to see the latest message
-                responseBox.scrollTop = responseBox.scrollHeight;
-            }, 500);
+            recognition.onresult = function(event) {
+                const speechResult = event.results[0][0].transcript;
+                document.getElementById("speech-result").value = speechResult;
+
+                // Display the speech result in the response box
+                const responseBox = document.getElementById("response-box");
+                const userAnswerDiv = document.createElement("div");
+                userAnswerDiv.classList.add("system-response");
+                userAnswerDiv.textContent = "Your Response: " + speechResult;
+                responseBox.appendChild(userAnswerDiv);
+
+                // Send the answer to the backend for feedback
+                fetch("/send_answer", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ question: currentQuestion, answer: speechResult })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Display the feedback in the response box
+                    const feedbackDiv = document.createElement("div");
+                    feedbackDiv.classList.add("system-response");
+                    feedbackDiv.textContent = "Feedback: " + data.feedback;
+                    responseBox.appendChild(feedbackDiv);
+
+                    // Scroll to the latest message
+                    responseBox.scrollTop = responseBox.scrollHeight;
+                });
+            };
+
+            recognition.onerror = function(event) {
+                alert("Error occurred in recognition: " + event.error);
+            };
         });
     </script>
-
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
