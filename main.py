@@ -6,7 +6,6 @@ from datetime import timedelta
 from utils import hash_password, verify_password
 from auth import create_access_token
 from models import UserCreate
-from database import db, serialize_dict, users_collection
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -21,10 +20,10 @@ ALGORITHM = "HS256"
 # Instantiate FastAPI app
 app = FastAPI()
 
-# openai.api_key = "sk-h6TtCNS3fGaHLw4H5FEZ7t3DlZmNgZcDUvgfcraHliT3BlbkFJcDgBvFZqZ2lazKqRDo36p_UgbnGk_59IyOTFeOOWkA"
+
 
 client = OpenAI(
-    api_key="sk-h6TtCNS3fGaHLw4H5FEZ7t3DlZmNgZcDUvgfcraHliT3BlbkFJcDgBvFZqZ2lazKqRDo36p_UgbnGk_59IyOTFeOOWkA"
+    api_key=""
 )
 
 
@@ -63,10 +62,6 @@ async def prompt_page(request: Request):
 # Predefined list of LeetCode-style questions and sample verbal approaches
 questions = [
     "FIRST BAD VERSION: Implement a function to find the first bad version in a series of versions.",
-    "TWO SUM: Given an array of integers, return indices of the two numbers that add up to a specific target.",
-    "MERGE INTERVALS: Given a collection of intervals, merge all overlapping intervals.",
-    "LONGEST PALINDROMIC SUBSTRING: Find the longest palindromic substring in a given string.",
-    "FIND MEDIAN FROM DATA STREAM: Continuously add numbers and return the median after each addition."
 ]
 
 
