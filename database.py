@@ -2,9 +2,10 @@
 from pymongo import MongoClient
 from bson import ObjectId
 
-MONGODB_URL = "mongodb://localhost:27017"
+MONGODB_URL = "mongodb+srv://Akshay:FirstDB2024@akshay-cluster.63skn.mongodb.net/"
 client = MongoClient(MONGODB_URL)
-db = client["auth_db"]  # Name your database
+db = client["authDB"]  # Name your database
+users_collection = db["authDB"]
 
 # Utility to handle ObjectId in MongoDB
 def serialize_dict(d):
