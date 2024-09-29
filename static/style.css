@@ -1,0 +1,40 @@
+* Set the background image and make it cover the entire page */
+body {
+    background-image: url('https://your-futuristic-image-url.com/image.jpg'); /* Replace with your image URL */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 100vh;
+    color: white;
+    position: relative; /* Ensure overlay is positioned correctly */
+}
+
+/* Add a dark overlay for better text visibility */
+.overlay {
+    background-color: rgba(0, 0, 0, 0.5);
+    height: 100vh;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+}
+
+/* Customize text colors and button styles */
+h1, p {
+    z-index: 1;
+}
+
+.navbar, .nav-link {
+    z-index: 1;
+}
+
+.btn-outline-primary, .btn-outline-success {
+    border-color: #fff;
+    color: #fff;
+}
+
+.btn-outline-primary:hover, .btn-outline-success:hover {
+    background-color: #fff;
+    color: #000;
+}
