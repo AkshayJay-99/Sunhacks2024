@@ -22,9 +22,6 @@ app = FastAPI()
 
 
 
-client = OpenAI(
-    api_key=""
-)
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
